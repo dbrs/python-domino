@@ -24,6 +24,9 @@ class Domino:
                 constructor value or through DOMINO_API_HOST environment \
                 variable.")
 
+        if host[-1:] == '/':
+            raise Exception("Host {0} may not have a trailing slash.".format(host))
+
         self._logger.info('Initializing Domino API with host ' + host)
 
         owner_username = project.split("/")[0]
