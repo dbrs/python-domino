@@ -1,4 +1,5 @@
 from .routes import _Routes
+from .response_objects.domino_status import DominoStatusResponse
 
 try:
     import urllib2
@@ -8,8 +9,6 @@ except ImportError:
 import os
 import logging
 import requests
-
-from domino.response_objects.domino_status import DominoStatusResponse
 
 class Domino:
     def __init__(self, project, api_key=None, host=None):

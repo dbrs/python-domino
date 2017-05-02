@@ -1,6 +1,5 @@
 import datetime
 
-
 class DominoStatusResponse:
     def __init__(self, domino_response):
         self._raw_response = domino_response
@@ -23,7 +22,6 @@ class DominoStatusResponse:
 
     def is_done(self):
         return self.domino_status.status in self.status_types_done
-
 
 class DominoStatus:
     def __init__(self, response_json):

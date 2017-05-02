@@ -2,10 +2,10 @@ from distutils.core import setup
 
 setup(
     name='python-domino-dbrs',
-    version='0.0.1',
+    version='0.0.2',
     author='DBRS',
     author_email='modelsupport@dbrs.com',
-    packages=['domino'],
+    packages=['domino', 'domino.response_objects'],
     scripts=[],
     url='http://www.dbrs.com',
     license='LICENSE.txt',
