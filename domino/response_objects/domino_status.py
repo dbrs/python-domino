@@ -4,6 +4,8 @@ class DominoStatusResponse:
     def __init__(self, domino_response):
         self._raw_response = domino_response
         self.domino_status = DominoStatus(domino_response)
+
+        self._status_success = 'Succeeded'
         self.status_types = [
             "Scheduled"
             "Queued",
@@ -17,11 +19,14 @@ class DominoStatusResponse:
         self.status_types_done = [
             "Stopped",
             "Failed",
-            "Succeeded"
+            self._status_success
         ]
 
     def is_done(self):
         return self.domino_status.status in self.status_types_done
+
+    def is_success(self):
+        return self.domino_status.status == self._status_success
 
 class DominoStatus:
     def __init__(self, response_json):
