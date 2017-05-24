@@ -1,13 +1,13 @@
 from distutils.core import setup
 
 setup(
-    name='python-domino',
-    version='0.2.0',
-    author='Domino Data Lab',
-    author_email='support@dominodatalab.com',
-    packages=['domino'],
+    name='python-domino-dbrs',
+    version='0.0.4',
+    author='DBRS',
+    author_email='modelsupport@dbrs.com',
+    packages=['domino', 'domino.response_objects'],
     scripts=[],
-    url='http://www.dominodatalab.com',
+    url='http://www.dbrs.com',
     license='LICENSE.txt',
     description='Python bindings for the Domino API',
     long_description='',

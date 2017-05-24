@@ -1,4 +1,6 @@
 from .routes import _Routes
+from .response_objects.domino_status import DominoStatusResponse
+import json
 
 try:
     import urllib2
@@ -8,7 +10,6 @@ except ImportError:
 import os
 import logging
 import requests
-
 
 class Domino:
     def __init__(self, project, api_key=None, host=None):
@@ -22,6 +23,9 @@ class Domino:
             raise Exception("Host must be provided, either via the \
                 constructor value or through DOMINO_API_HOST environment \
                 variable.")
+
+        if host[-1:] == '/':
+            raise Exception("Host {0} may not have a trailing slash.".format(host))
 
         self._logger.info('Initializing Domino API with host ' + host)
 
@@ -70,7 +74,22 @@ class Domino:
 
     def runs_status(self, runId):
         url = self._routes.runs_status(runId)
-        return self._get(url)
+        return DominoStatusResponse(self._get(url))
+
+    def endpoint_run(self, parameters):
+        url = self._routes.endpoint()
+
+        headers = {
+            "X-Domino-Api-Key": self._api_key,
+            "Content-Type": "application/json"
+        }
+
+        request = {
+            "parameters": parameters
+        }
+
+        response = requests.post(url, headers=headers, json=request)
+        return response.json()
 
     def files_list(self, commitId, path='/'):
         url = self._routes.files_list(commitId, path)
