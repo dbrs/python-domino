@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='python-domino-dbrs',
-    version='0.0.3',
+    version='0.0.4',
     author='DBRS',
     author_email='modelsupport@dbrs.com',
     packages=['domino', 'domino.response_objects'],
