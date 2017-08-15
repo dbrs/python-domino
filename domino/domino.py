@@ -7,6 +7,7 @@ import requests
 session = FuturesSession(executor=ThreadPoolExecutor(max_workers=10))
 adapter = requests.adapters.HTTPAdapter(pool_connections=10, pool_maxsize=10)
 session.mount('http://', adapter)
+session.mount('https://', adapter)
 
 try:
     import urllib2
