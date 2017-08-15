@@ -22,8 +22,9 @@ import pprint
 
 
 class Domino:
-    def __init__(self, project, api_key=None, host=None):
+    def __init__(self, project, api_key=None, host=None, verify=None):
         self._configure_logging()
+        self.verify = session.verify = verify
 
         if host is not None:
             host = host
@@ -82,7 +83,7 @@ class Domino:
             "publishApiEndpoint": publishApiEndpoint
         }
 
-        response = requests.post(url, auth=('', self._api_key), json=request)
+        response = requests.post(url, auth=('', self._api_key), json=request, verify=self.verify)
         return response.json()
 
     def runs_start_blocking(self, command, isDirect=False, commitId=None,
@@ -219,7 +220,7 @@ class Domino:
     def fork_project(self, target_name):
         url = self._routes.fork_project()
         request = { "overrideProjectName" : target_name}
-        response = requests.post(url, auth=('', self._api_key), data=request)
+        response = requests.post(url, auth=('', self._api_key), data=request, verify=self.verify)
         return response.status_code
 
     def endpoint_state(self):
@@ -228,7 +229,7 @@ class Domino:
 
     def endpoint_unpublish(self):
         url = self._routes.endpoint()
-        response = requests.delete(url, auth=('', self._api_key))
+        response = requests.delete(url, auth=('', self._api_key), verify=self.verify)
         return response
 
     def endpoint_publish(self, file, function, commitId):
@@ -242,7 +243,7 @@ class Domino:
             }
         }
 
-        response = requests.post(url, auth=('', self._api_key), json=request)
+        response = requests.post(url, auth=('', self._api_key), json=request, verify=self.verify)
         return response
 
     def deployment_version(self):
@@ -257,7 +258,7 @@ class Domino:
             'name': project_name
         }
         response = requests.post(url, auth=('', self._api_key), data=request,
-                                 allow_redirects=False)
+                                 allow_redirects=False, verify=self.verify)
         disposition = parse_play_flash_cookie(response)
         if disposition.get("error"):
             raise Exception(disposition.get("message"))
@@ -277,7 +278,7 @@ class Domino:
             'welcomeMessage': message
         }
         response = requests.post(url, auth=('', self._api_key), data=request,
-                                 allow_redirects=False)
+                                 allow_redirects=False, verify=self.verify)
         disposition = parse_play_flash_cookie(response)
         if disposition.get("error"):
             raise Exception(disposition.get("message"))
@@ -286,10 +287,10 @@ class Domino:
 
     # Helper methods
     def _get(self, url):
-        return requests.get(url, auth=('', self._api_key)).json()
+        return requests.get(url, auth=('', self._api_key), verify=self.verify).json()
 
     def _put_file(self, url, file):
-        return requests.put(url, data=file, auth=('', self._api_key))
+        return requests.put(url, data=file, auth=('', self._api_key), verify=self.verify)
 
     def _open_url(self, url):
         password_mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()
