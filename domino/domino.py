@@ -1,6 +1,13 @@
 from .routes import _Routes
 from .response_objects.domino_status import DominoStatusResponse
-import json
+from concurrent.futures import ThreadPoolExecutor
+from requests_futures.sessions import FuturesSession
+import requests
+
+session = FuturesSession(executor=ThreadPoolExecutor(max_workers=10))
+adapter = requests.adapters.HTTPAdapter(pool_connections=10, pool_maxsize=10)
+session.mount('http://', adapter)
+session.mount('https://', adapter)
 
 try:
     import urllib2
@@ -46,6 +53,9 @@ class Domino:
         self._version = self.deployment_version().get("version")
         print(self._version)
 
+    def _bg_callback(self, session, response):
+        # parse the json storing the result on the response object
+        response.json = response.json()
 
     def _configure_logging(self):
         logging.basicConfig(level=logging.INFO)
@@ -77,6 +87,14 @@ class Domino:
         return DominoStatusResponse(self._get(url))
 
     def endpoint_run(self, parameters):
+        """
+        Async call of domino endpoint
+        :param parameters: json with parameters that domino endpoint is expecting
+        :return: future object that need to be resolved by calling the result() method on it
+                 resolved result object has json attribute that contains json object of the domino result
+                 additional details on future implementation are available at https://github.com/ross/requests-futures
+        """
+
         url = self._routes.endpoint()
 
         headers = {
@@ -88,8 +106,8 @@ class Domino:
             "parameters": parameters
         }
 
-        response = requests.post(url, headers=headers, json=request)
-        return response.json()
+        response = session.post(url, headers=headers, json=request, background_callback=self._bg_callback)
+        return response
 
     def files_list(self, commitId, path='/'):
         url = self._routes.files_list(commitId, path)
