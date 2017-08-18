@@ -17,10 +17,14 @@ except ImportError:
 import os
 import logging
 import requests
+import time
+import pprint
+
 
 class Domino:
-    def __init__(self, project, api_key=None, host=None):
+    def __init__(self, project, api_key=None, host=None, verify=None):
         self._configure_logging()
+        self.verify = session.verify = verify
 
         if host is not None:
             host = host
@@ -51,12 +55,12 @@ class Domino:
 
         # Get version
         self._version = self.deployment_version().get("version")
-        print(self._version)
+        print("Your Domino deployment is running version {}".format(self._version))
 
     def _bg_callback(self, session, response):
         # parse the json storing the result on the response object
         response.json = response.json()
-
+        
     def _configure_logging(self):
         logging.basicConfig(level=logging.INFO)
         self._logger = logging.getLogger(__name__)
@@ -79,8 +83,82 @@ class Domino:
             "publishApiEndpoint": publishApiEndpoint
         }
 
-        response = requests.post(url, auth=('', self._api_key), json=request)
+        response = requests.post(url, auth=('', self._api_key), json=request, verify=self.verify)
         return response.json()
+
+    def runs_start_blocking(self, command, isDirect=False, commitId=None,
+                            title=None, tier=None, publishApiEndpoint=None,
+                            poll_freq=5, max_poll_time=6000):
+        """
+        Run a tasks that runs in a blocking loop that periodically checks to
+        see if the task is done.  If the task errors an exception is raised.
+
+        parameters
+        ----------
+        command : list of strings
+                  list that containst the name of the file to run in index 0 and
+                  args in subsequent positions.
+                  example:
+                  >> domino.runs_start(["main.py", "arg1", "arg2"])
+
+        isDirect : boolean (Optional)
+                   Whether or not this command should be passed directly to a shell.
+
+        commitId : string (Optional)
+                   The commitId to launch from. If not provided, will launch from latest commit.
+
+        title    : string (Optional)
+                   A title for the run
+
+        tier     : string (Optional)
+                   The hardware tier to use for the run. Will use project default
+                   tier if not provided.
+
+        publishApiEndpoint : boolean (Optional)
+                            Whether or not to publish an API endpoint from the resulting output.
+
+        poll_freq : int (Optional)
+                    Number of seconds in between polling of the Domino server for
+                    status of the task that is running.
+
+        max_poll_time : int (Optional)
+                        Maximum number of seconds to wait for a task to complete.
+                        If this threshold is exceeded, an exception is raised.
+        """
+        run_response = self.runs_start(command, isDirect, commitId, title,
+                                       tier, publishApiEndpoint)
+        run_id = run_response['runId']
+
+        poll_start = time.time()
+        while True:
+            run_info = self.get_run_info(run_id)
+            elapsed_time = time.time() - poll_start
+
+            if elapsed_time >= max_poll_time:
+                raise Exception('Run exceeded maximum time of {} seconds'.format(max_poll_time))
+
+            if run_info is None:
+                raise Exception("Tried to access nonexistent run id {}.".
+                                format(run_id))
+
+            output_commit_id = run_info.get('outputCommitId')
+            if not output_commit_id:
+                time.sleep(poll_freq)
+                continue
+
+            # once task has finished running check to see if it was successfull
+            else:
+                stdout_msg = self.runs_stdout(run_id)
+
+                if run_info['status'] != 'Succeeded':
+                    header_msg = ("Remote run {0} finished but did not succeed.\n"
+                                  .format(run_id))
+                    raise Exception(header_msg + stdout_msg)
+
+                logging.info(stdout_msg)
+                break
+
+        return run_response
 
     def runs_status(self, runId):
         url = self._routes.runs_status(runId)
@@ -109,6 +187,24 @@ class Domino:
         response = session.post(url, headers=headers, json=request, background_callback=self._bg_callback)
         return response
 
+    def get_run_info(self, run_id):
+        for run_info in self.runs_list()['data']:
+            if run_info['id'] == run_id:
+                return run_info
+
+    def runs_stdout(self, runId):
+        """
+        Get std out emitted by a particular run.
+
+        parameters
+        ----------
+        runId : string
+                the id associated with the run.
+        """
+        url = self._routes.runs_stdout(runId)
+        # pprint.pformat outputs a string that is ready to be printed
+        return pprint.pformat(self._get(url)['stdout'])
+
     def files_list(self, commitId, path='/'):
         url = self._routes.files_list(commitId, path)
         return self._get(url)
@@ -121,13 +217,19 @@ class Domino:
         url = self._routes.blobs_get(key)
         return self._open_url(url)
 
+    def fork_project(self, target_name):
+        url = self._routes.fork_project()
+        request = { "overrideProjectName" : target_name}
+        response = requests.post(url, auth=('', self._api_key), data=request, verify=self.verify)
+        return response.status_code
+
     def endpoint_state(self):
         url = self._routes.endpoint_state()
         return self._get(url)
 
     def endpoint_unpublish(self):
         url = self._routes.endpoint()
-        response = requests.delete(url, auth=('', self._api_key))
+        response = requests.delete(url, auth=('', self._api_key), verify=self.verify)
         return response
 
     def endpoint_publish(self, file, function, commitId):
@@ -141,7 +243,7 @@ class Domino:
             }
         }
 
-        response = requests.post(url, auth=('', self._api_key), json=request)
+        response = requests.post(url, auth=('', self._api_key), json=request, verify=self.verify)
         return response
 
     def deployment_version(self):
@@ -156,7 +258,7 @@ class Domino:
             'name': project_name
         }
         response = requests.post(url, auth=('', self._api_key), data=request,
-                                 allow_redirects=False)
+                                 allow_redirects=False, verify=self.verify)
         disposition = parse_play_flash_cookie(response)
         if disposition.get("error"):
             raise Exception(disposition.get("message"))
@@ -176,7 +278,7 @@ class Domino:
             'welcomeMessage': message
         }
         response = requests.post(url, auth=('', self._api_key), data=request,
-                                 allow_redirects=False)
+                                 allow_redirects=False, verify=self.verify)
         disposition = parse_play_flash_cookie(response)
         if disposition.get("error"):
             raise Exception(disposition.get("message"))
@@ -185,11 +287,10 @@ class Domino:
 
     # Helper methods
     def _get(self, url):
-        return requests.get(url, auth=('', self._api_key)).json()
+        return requests.get(url, auth=('', self._api_key), verify=self.verify).json()
 
     def _put_file(self, url, file):
-        files = {'file': file}
-        return requests.put(url, files=files, auth=('', self._api_key))
+        return requests.put(url, data=file, auth=('', self._api_key), verify=self.verify)
 
     def _open_url(self, url):
         password_mgr = urllib2.HTTPPasswordMgrWithDefaultRealm()

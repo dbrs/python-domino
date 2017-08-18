@@ -9,6 +9,9 @@ class _Routes:
         return self.host + '/v1/projects/' + \
             self._owner_username + '/' + self._project_name
 
+    def _build_project_url_private_api(self):
+        return self.host + '/u/' + self._owner_username + '/' + self._project_name
+
     def runs_list(self):
         return self._build_project_url() + '/runs'
 
@@ -18,6 +21,9 @@ class _Routes:
     def runs_status(self, runId):
         return self._build_project_url() + '/runs/' + runId
 
+    def runs_stdout(self, runId):
+        return self._build_project_url() + '/run/' + runId + '/stdout'
+
     def files_list(self, commitId, path):
         return self._build_project_url() + '/files/' + commitId + '/' + path
 
@@ -26,6 +32,9 @@ class _Routes:
 
     def blobs_get(self, key):
         return self._build_project_url() + '/blobs/' + key
+
+    def fork_project(self):
+        return self._build_project_url_private_api() + '/fork'
 
     def _build_old_project_url(self):
         # TODO refactor once these API endpoints are supported in REST API
